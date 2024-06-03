@@ -1,24 +1,25 @@
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, get_object_or_404, redirect
-from django.utils import timezone
-from django.urls import reverse_lazy
-from django.views.generic import CreateView, DetailView
-from django.utils.decorators import method_decorator
-from django.core.paginator import Paginator
-from django.views.decorators.http import require_POST
-from django.contrib.auth.views import LoginView
-from django.db.models import Count
 from django.contrib.auth import get_user_model
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import LoginView
+from django.core.paginator import Paginator
+from django.db.models import Count
 from django.http import Http404
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse_lazy
+from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.decorators.http import require_POST
+from django.views.generic import CreateView, DetailView
 
-from .models import Category, Post, Comment
-from .forms import PostForm, CommentForm, ProfileForm, CustomUserCreationForm
 from .decorators import check_post_access
+from .forms import CommentForm, CustomUserCreationForm, PostForm, ProfileForm
+from .models import Category, Comment, Post
+from blogicum.settings import POSTS_PER_PAGE
 
 User = get_user_model()
 
 
-def paginate_queryset(request, queryset, per_page=10):
+def paginate_queryset(request, queryset, per_page=POSTS_PER_PAGE):
     """Пагинация запроса и возвращение объекта страницы."""
     paginator = Paginator(queryset, per_page)
     page_number = request.GET.get('page')
@@ -26,12 +27,17 @@ def paginate_queryset(request, queryset, per_page=10):
     return page_obj
 
 
-def optimize_posts(queryset):
-    return queryset.select_related('author', 'category', 'location').filter(
+def optimize_posts(queryset, with_annotations=True):
+    queryset = queryset.select_related(
+        'author', 'category', 'location').filter(
         is_published=True,
         pub_date__lte=timezone.now(),
         category__is_published=True
     )
+    if with_annotations:
+        queryset = queryset.annotate(
+            comment_count=Count('comments')).order_by('-pub_date')
+    return queryset
 
 
 def index(request):
@@ -45,11 +51,10 @@ def index(request):
 
 
 def category_posts(request, category_slug):
-    category = get_object_or_404(Category,
-                                 slug=category_slug, is_published=True)
-    posts = optimize_posts(Post.objects.filter(category=category)).annotate(
-        comment_count=Count('comments')
-    ).order_by('-pub_date')
+    category = get_object_or_404(
+        Category, slug=category_slug, is_published=True)
+    # Используем обратную связь для получения постов
+    posts = optimize_posts(category.posts.all())
     page_obj = paginate_queryset(request, posts)
 
     context = {'category': category, 'page_obj': page_obj}
@@ -60,10 +65,10 @@ def category_posts(request, category_slug):
 @check_post_access
 def post_detail(request, post_id):
     post = get_object_or_404(Post, id=post_id)
-    comments = post.comments.filter(is_published=True).order_by('created_at')
+    comments = post.comments.filter(is_published=True)
     form = CommentForm(request.POST or None)
 
-    if request.method == 'POST' and form.is_valid():
+    if form.is_valid():  # Проверка валидности формы
         comment = form.save(commit=False)
         comment.post = post
         comment.author = request.user
@@ -103,8 +108,6 @@ def create_post(request):
         if form.is_valid():
             post = form.save(commit=False)
             post.author = request.user
-            if not post.pub_date:
-                post.pub_date = timezone.now()
             post.save()
             return redirect('blog:profile', username=request.user.username)
     else:
@@ -130,9 +133,7 @@ def edit_post(request, post_id):
 
 @login_required
 def delete_post(request, post_id):
-    post = get_object_or_404(Post, id=post_id)
-    if request.user != post.author:
-        raise Http404
+    post = get_object_or_404(Post, id=post_id, author=request.user)
 
     if request.method == 'POST':
         post.delete()

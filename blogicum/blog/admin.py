@@ -1,4 +1,5 @@
 from django.contrib import admin
+
 from .models import Category, Location, Post, Comment
 
 
@@ -7,6 +8,7 @@ class PostInLine(admin.TabularInline):
     extra = 0
 
 
+@admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
     inlines = (PostInLine,)
     list_display = (
@@ -18,6 +20,7 @@ class CategoryAdmin(admin.ModelAdmin):
     search_fields = ('title',)
 
 
+@admin.register(Comment)
 class CommentAdmin(admin.ModelAdmin):
     list_display = (
         'created_at',
@@ -29,6 +32,7 @@ class CommentAdmin(admin.ModelAdmin):
     list_filter = ('is_published',)
 
 
+@admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
     inlines = (PostInLine,)
     list_display = (
@@ -39,6 +43,7 @@ class LocationAdmin(admin.ModelAdmin):
     search_fields = ('name',)
 
 
+@admin.register(Post)
 class PostAdmin(admin.ModelAdmin):
     list_display = (
         'title',
@@ -56,9 +61,3 @@ class PostAdmin(admin.ModelAdmin):
     search_fields = ('title',)
     list_filter = ('is_published',)
     list_display_links = ('title',)
-
-
-admin.site.register(Category, CategoryAdmin)
-admin.site.register(Comment, CommentAdmin)
-admin.site.register(Location, LocationAdmin)
-admin.site.register(Post, PostAdmin)

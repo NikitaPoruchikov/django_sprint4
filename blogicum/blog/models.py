@@ -1,5 +1,6 @@
 from django.db import models
 from django.urls import reverse
+from django.utils import timezone
 
 from .constants import MAX_LENGTH_NAME
 from .mixins import PublishedMixin, UserRelatedMixin
@@ -54,6 +55,7 @@ class Post(PublishedMixin, UserRelatedMixin):
         verbose_name='Фото'
     )
     pub_date = models.DateTimeField(
+        default=timezone.now,  # Автоматическая установка текущего времени
         verbose_name='Дата публикации'
     )
     location = models.ForeignKey(
