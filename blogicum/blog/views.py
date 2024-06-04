@@ -29,21 +29,21 @@ def paginate_queryset(request, queryset, per_page=POSTS_PER_PAGE):
 
 def optimize_posts(queryset, with_annotations=True):
     queryset = queryset.select_related(
-        'author', 'category', 'location').filter(
+        'author', 'category', 'location'
+    ).filter(
         is_published=True,
         pub_date__lte=timezone.now(),
         category__is_published=True
     )
     if with_annotations:
         queryset = queryset.annotate(
-            comment_count=Count('comments')).order_by('-pub_date')
+            comment_count=Count('comments')
+        ).order_by('-pub_date')
     return queryset
 
 
 def index(request):
-    posts = optimize_posts(Post.objects.all()).annotate(
-        comment_count=Count('comments')
-    ).order_by('-pub_date')
+    posts = optimize_posts(Post.objects.all())
     page_obj = paginate_queryset(request, posts)
 
     context = {'page_obj': page_obj}
@@ -157,12 +157,11 @@ def edit_profile(request):
 
 def profile(request, username):
     user_profile = get_object_or_404(User, username=username)
-    posts = Post.objects.filter(author=user_profile).annotate(
-        comment_count=Count('comments')
-    ).order_by('-pub_date')
+    posts = user_profile.posts.all()
 
+    # Применение фильтрации через функцию optimize_post.
     if not request.user.is_authenticated or request.user != user_profile:
-        posts = posts.filter(is_published=True, pub_date__lte=timezone.now())
+        posts = optimize_posts(posts, with_annotations=True)
 
     page_obj = paginate_queryset(request, posts)
 
