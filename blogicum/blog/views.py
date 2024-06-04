@@ -11,10 +11,10 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DetailView
 
+from blogicum.settings import POSTS_PER_PAGE
 from .decorators import check_post_access
 from .forms import CommentForm, CustomUserCreationForm, PostForm, ProfileForm
 from .models import Category, Comment, Post
-from blogicum.settings import POSTS_PER_PAGE
 
 User = get_user_model()
 
