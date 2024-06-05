@@ -161,7 +161,7 @@ def profile(request, username):
 
     # Применение фильтрации через функцию optimize_post.
     if not request.user.is_authenticated or request.user != user_profile:
-        posts = optimize_posts(posts, with_annotations=True)
+        posts = optimize_posts(posts)
 
     page_obj = paginate_queryset(request, posts)
 
